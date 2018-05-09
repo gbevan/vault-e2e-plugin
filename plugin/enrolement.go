@@ -1,7 +1,8 @@
 package e2e
 
-type E2eEnrolementEntry struct {
-	ID string `json:"id" structs:"id" mapstructure:"id"`
+// E2eEnrolementEntry structure repesenting an E2E public key enrolement
+type E2eEnrolementEntry struct { // nolint
+	// ID string `json:"id" structs:"id" mapstructure:"id"`
 
 	Name string `json:"name" structs:"name" mapstructure:"name"`
 

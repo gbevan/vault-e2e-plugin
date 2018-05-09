@@ -31,6 +31,8 @@ func main() {
 	}
 	pem.Encode(os.Stdout, privateKey)
 
+	fmt.Println()
+
 	// print PEM encoded public key
 	asn1Bytes, err := asn1.Marshal(publicKey)
 	checkError(err)
