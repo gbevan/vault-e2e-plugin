@@ -19,11 +19,19 @@ go run bin/genrsapair.go | jq -Rsc
 to encode as json string array, that can be pasted into a curl command for
 enrolement.
 ```
-curl -H "Accept: application/json" -H "Content-type: application/json" --header "X-Vault-Token: root" --request POST http://127.0.0.1:8210/v1/e2e/enrole/TEST --data '{"name": "TEST", "pubkey":"-----BEGIN RSA[2048] PUBLIC KEY-----\nMIIBCgKCAQEAykQ6BB4ayKtzvQBoswbxOPaxblag6OMZ9an0ASMvkGAAkaIvkYUe\nfVwNoeixWZsdFr7q8IVOonVWFBMCf5TFKm8GWN2HNnlePL5/GH3QOWYkbCBciF2D\nEv9hiMRzoT9NmTH1m29x7sDfNTIndp2LGKTPLReGr866iPu7Res88chQQ+AC//wG\n9Wqe9Xzlg4tCJd2TY36Ia6K2P0QTahp9hCha2U9pplzJZM37MpNhMqCHOxGuCLkL\nPKy/F82AJ24+iHYLJnpDU0TVFjPoYTMKYh9R36bVl6yURPTIsW/CvYAYE9VBm5KS\n6v5MZIfHqs16qq1AIVHZnfsXKDbmfBZEOwIDAQAB\n-----END RSA[2048] PUBLIC KEY-----\n"}'
+curl -s -H "Accept: application/json" \
+  -H "Content-type: application/json" \
+  --header "X-Vault-Token: root" \
+  --request POST http://127.0.0.1:8210/v1/e2e/enrole/TEST \
+  --data '{"name": "TEST", "pubkey":"-----BEGIN RSA[2048] PUBLIC KEY-----\nMIIBCgKCAQEAykQ6BB4ayKtzvQBoswbxOPaxblag6OMZ9an0ASMvkGAAkaIvkYUe\nfVwNoeixWZsdFr7q8IVOonVWFBMCf5TFKm8GWN2HNnlePL5/GH3QOWYkbCBciF2D\nEv9hiMRzoT9NmTH1m29x7sDfNTIndp2LGKTPLReGr866iPu7Res88chQQ+AC//wG\n9Wqe9Xzlg4tCJd2TY36Ia6K2P0QTahp9hCha2U9pplzJZM37MpNhMqCHOxGuCLkL\nPKy/F82AJ24+iHYLJnpDU0TVFjPoYTMKYh9R36bVl6yURPTIsW/CvYAYE9VBm5KS\n6v5MZIfHqs16qq1AIVHZnfsXKDbmfBZEOwIDAQAB\n-----END RSA[2048] PUBLIC KEY-----\n"}'
 ```
 Check the enrolement entry in Vault E2E:
 ```
-curl -s -H "Accept: application/json" -H "Content-type: application/json" --header "X-Vault-Token: root"  http://127.0.0.1:8210/v1/e2e/enrole/TEST -X GET | jq
+curl -s -H "Accept: application/json" \
+  -H "Content-type: application/json" \
+  --header "X-Vault-Token: root" \
+  http://127.0.0.1:8210/v1/e2e/enrole/TEST \
+  -X GET | jq
 ```
 ```json
 {

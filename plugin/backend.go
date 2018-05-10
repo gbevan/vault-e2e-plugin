@@ -9,7 +9,7 @@ import (
 )
 
 // E2eBackend E2E Backend
-type E2eBackend struct {
+type E2eBackend struct { // nolint
 	*framework.Backend
 	view logical.Storage
 }
@@ -51,6 +51,7 @@ func Backend(ctx context.Context, conf *logical.BackendConfig) *E2eBackend {
 		Secrets: []*framework.Secret{},
 		Paths: framework.PathAppend(
 			pathEnrole(backend),
+			pathPayload(backend),
 		),
 		WALRollback: rollback,
 	}
