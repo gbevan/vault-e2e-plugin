@@ -48,7 +48,11 @@ func Backend(ctx context.Context, conf *logical.BackendConfig) *E2eBackend {
 		// Secrets: []*framework.Secret{
 		// 	secretJWT(backend),
 		// },
-		Secrets: []*framework.Secret{},
+		Secrets: []*framework.Secret{
+			&framework.Secret{
+				Type: "kv",
+			},
+		},
 		Paths: framework.PathAppend(
 			pathEnrole(backend),
 			pathPayload(backend),

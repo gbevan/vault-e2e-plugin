@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/hashicorp/vault/helper/pluginutil"
 	"github.com/hashicorp/vault/logical/plugin"
 	e2e "gitlab.com/gbevan/vault-e2e-plugin/plugin"
@@ -16,6 +17,7 @@ func main() {
 	flags.Parse(os.Args[1:]) // Ignore command, strictly parse flags
 
 	tlsConfig := apiClientMeta.GetTLSConfig()
+	log.Println("tlsConfig: %s\n", spew.Sdump(tlsConfig))
 	tlsProviderFunc := pluginutil.VaultPluginTLSProvider(tlsConfig)
 
 	factoryFunc := e2e.Factory

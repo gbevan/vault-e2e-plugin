@@ -39,6 +39,8 @@ ENV VAULT_LOCAL_CONFIG '{ "plugin_directory": "/vault/plugins" }'
 ENV VAULT_DEV_ROOT_TOKEN_ID "root"
 ENV VAULT_LOG_LEVEL "trace"
 
+RUN apk update && apk add curl jq
+
 RUN mkdir -p /vault/plugins
 RUN mkdir -p /vault/data
 
