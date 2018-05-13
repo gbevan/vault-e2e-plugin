@@ -115,12 +115,45 @@ func (backend *E2eBackend) pathPayloadCreate(ctx context.Context, req *logical.R
 
 	log.Printf("logical.Connection: %s\n", (&logical.Connection{}).RemoteAddr)
 
+	log.Printf("EnvVaultAddress: %s\n", os.Getenv(vapi.EnvVaultAddress))
+	log.Printf("EnvVaultToken: %s\n", os.Getenv(vapi.EnvVaultToken))
 	clientConf := vapi.DefaultConfig()
+	clientConf.ReadEnvironment()
 	log.Printf("clientConf: %s\n", scs.Sdump(clientConf))
+	log.Printf("clientConf.Error: %s\n", scs.Sdump(clientConf.Error))
+
 	client, err := vapi.NewClient(nil)
+
+	log.Printf("vapi.Auth: %s\n", scs.Sdump())
+
 	// TODO: use current client token and address of unix domain socket instead
-	client.SetToken("root")
+	vToken := os.Getenv(vapi.EnvVaultToken)
+	devToken := os.Getenv("VAULT_DEV_ROOT_TOKEN_ID")
+	token := devToken
+	if token == "" {
+		token = vToken
+	}
+	client.SetToken(token)
+	// client.SetToken(req.ClientToken)
+	// client.SetToken(req.ClientTokenAccessor)
 	log.Printf("client: %s, err: %s\n", scs.Sdump(client), err)
+
+	// unwrapToken := os.Getenv(pluginutil.PluginUnwrapTokenEnv)
+	// log.Printf("PluginUnwrapTokenEnv: %s\n", unwrapToken)
+	// secret, err := client.Logical().Unwrap(unwrapToken)
+	// log.Printf("secret: %s, err: %s\n", scs.Sdump(secret), err)
+
+	// rpc.Client.
+	// req.Connection.ConnState
+	// rpc.NewClient(req.Connection)
+	// client.SetToken(unwrapToken)
+
+	// ta := client.Auth().Token()
+	// log.Printf("ta: %s\n", scs.Sdump(ta))
+	//
+	// time.Sleep(10)
+	// self, err := ta.LookupSelf()
+	// log.Printf("ta LookupSelf: %s, err: %s\n", scs.Sdump(self), err)
 
 	l := client.Logical()
 	log.Printf("logical: %s\n", scs.Sdump(l))
@@ -141,13 +174,18 @@ func (backend *E2eBackend) pathPayloadCreate(ctx context.Context, req *logical.R
 				secretPath := parts[1]
 
 				s, err := l.Read(secretPath)
-				log.Printf("secret: %s, err: %s\n", scs.Sdump(s), err)
-				log.Printf("secret Data: %s\n", scs.Sdump(s.Data))
+				if err != nil {
+					log.Println(err)
+				}
+				if s != nil {
+					log.Printf("secret: %s, err: %s\n", scs.Sdump(s), err)
+					log.Printf("secret Data: %s\n", scs.Sdump(s.Data))
 
-				d := s.Data["data"].(map[string]interface{})
-				log.Printf("data: %s\n", scs.Sdump(d))
-				payload[fieldName] = d["mydata"]
-				// TODO: Support nested path expansion requests in payload
+					d := s.Data["data"].(map[string]interface{})
+					log.Printf("data: %s\n", scs.Sdump(d))
+					payload[fieldName] = d["mydata"]
+					// TODO: Support nested path expansion requests in payload
+				}
 			}
 		}
 	}
