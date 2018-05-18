@@ -56,6 +56,7 @@ func Backend(ctx context.Context, conf *logical.BackendConfig) *E2eBackend {
 		Paths: framework.PathAppend(
 			pathEnrole(backend),
 			pathPayload(backend),
+			pathKV(backend),
 		),
 		WALRollback: rollback,
 	}

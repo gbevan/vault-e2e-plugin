@@ -26,9 +26,10 @@ curl -s -H "Accept: application/json" -H "Content-type: application/json" --head
 # Add a secret in kv
 # curl -s -H "Accept: application/json" -H "Content-type: text/plain" --header "X-Vault-Token: root"  $VURL/secret/my-secret-string -X POST --data '"This is a secret!"'
 
-curl -s -H "Accept: application/json" -H "Content-type: application/json" --header "X-Vault-Token: root"  $VURL/secret/data/my-secret -X POST --data '{"data": {"mydata": "This is a secret!"}}'
+# curl -s -H "Accept: application/json" -H "Content-type: application/json" --header "X-Vault-Token: root"  $VURL/secret/data/my-secret -X POST --data '{"data": {"mydata": "This is a secret!"}}'
+curl -s -H "Accept: application/json" -H "Content-type: application/json" --header "X-Vault-Token: root"  $VURL/e2e/kv/my-secret -X POST --data '{"data": {"mydata": "This is a secret!"}}'
 
 # Get payload referencing above secret path
-curl -s -H "Accept: application/json" -H "Content-type: application/json" --header "X-Vault-Token: root"  $VURL/e2e/payload/TEST -X POST  --data '{"payload": {"hello": "world", "secretData@/secret/data/my-secret": true}}' | jq .
+curl -s -H "Accept: application/json" -H "Content-type: application/json" --header "X-Vault-Token: root"  $VURL/e2e/payload/TEST -X POST  --data '{"payload": {"hello": "world", "secretData@/e2e/kv/my-secret": true}}' | jq .
 
 vault secrets list

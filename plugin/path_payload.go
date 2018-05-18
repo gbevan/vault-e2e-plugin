@@ -124,7 +124,7 @@ func (backend *E2eBackend) pathPayloadCreate(ctx context.Context, req *logical.R
 
 	client, err := vapi.NewClient(nil)
 
-	log.Printf("vapi.Auth: %s\n", scs.Sdump())
+	// log.Printf("vapi: %s\n", scs.Sdump(vapi))
 
 	// TODO: use current client token and address of unix domain socket instead
 	vToken := os.Getenv(vapi.EnvVaultToken)
@@ -181,7 +181,8 @@ func (backend *E2eBackend) pathPayloadCreate(ctx context.Context, req *logical.R
 					log.Printf("secret: %s, err: %s\n", scs.Sdump(s), err)
 					log.Printf("secret Data: %s\n", scs.Sdump(s.Data))
 
-					d := s.Data["data"].(map[string]interface{})
+					// d := s.Data["data"].(map[string]interface{})
+					d := s.Data //.(map[string]interface{})
 					log.Printf("data: %s\n", scs.Sdump(d))
 					payload[fieldName] = d["mydata"]
 					// TODO: Support nested path expansion requests in payload
