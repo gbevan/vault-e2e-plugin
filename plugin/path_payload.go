@@ -1,16 +1,27 @@
 package e2e
 
 import (
+	"bytes"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
+	"html/template"
+	"io"
 	"log"
 	"os"
+	"reflect"
 	"strings"
 
 	"github.com/davecgh/go-spew/spew"
-	vapi "github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/helper/pluginutil"
+	"github.com/fatih/structs"
 	"github.com/hashicorp/vault/logical"
 	"github.com/hashicorp/vault/logical/framework"
 )
@@ -105,108 +116,245 @@ func (backend *E2eBackend) pathPayloadCreate(ctx context.Context, req *logical.R
 	}
 	log.Println("after unmarshal")
 
-	apiClientMeta := &pluginutil.APIClientMeta{}
-	flags := apiClientMeta.FlagSet()
-	flags.Parse(os.Args[1:]) // Ignore command, strictly parse flags
-	log.Printf("apiClientMeta: %s\n", scs.Sdump(apiClientMeta))
-
-	tlsConfig := apiClientMeta.GetTLSConfig()
-	log.Printf("tls: %s\n", scs.Sdump(tlsConfig))
-
-	log.Printf("logical.Connection: %s\n", (&logical.Connection{}).RemoteAddr)
-
-	log.Printf("EnvVaultAddress: %s\n", os.Getenv(vapi.EnvVaultAddress))
-	log.Printf("EnvVaultToken: %s\n", os.Getenv(vapi.EnvVaultToken))
-	clientConf := vapi.DefaultConfig()
-	clientConf.ReadEnvironment()
-	log.Printf("clientConf: %s\n", scs.Sdump(clientConf))
-	log.Printf("clientConf.Error: %s\n", scs.Sdump(clientConf.Error))
-
-	client, err := vapi.NewClient(nil)
-
-	// log.Printf("vapi: %s\n", scs.Sdump(vapi))
-
-	// TODO: use current client token and address of unix domain socket instead
-	vToken := os.Getenv(vapi.EnvVaultToken)
-	devToken := os.Getenv("VAULT_DEV_ROOT_TOKEN_ID")
-	token := devToken
-	if token == "" {
-		token = vToken
+	// decode PEM public key
+	// https://golang.org/pkg/encoding/pem/#Decode
+	pblock, rest := pem.Decode([]byte(enrole.PubKey))
+	log.Printf("pBlock: %s, rest: %s\n", pblock, rest)
+	if pblock == nil || pblock.Type != "PUBLIC KEY" {
+		log.Fatal("failed to decode PEM block containing public key")
 	}
-	client.SetToken(token)
-	// client.SetToken(req.ClientToken)
-	// client.SetToken(req.ClientTokenAccessor)
-	log.Printf("client: %s, err: %s\n", scs.Sdump(client), err)
 
-	// unwrapToken := os.Getenv(pluginutil.PluginUnwrapTokenEnv)
-	// log.Printf("PluginUnwrapTokenEnv: %s\n", unwrapToken)
-	// secret, err := client.Logical().Unwrap(unwrapToken)
-	// log.Printf("secret: %s, err: %s\n", scs.Sdump(secret), err)
+	pub, err := x509.ParsePKIXPublicKey(pblock.Bytes)
+	// var pub *rsa.PublicKey
+	// rest, err := asn1.Unmarshal(pub, pblock.Bytes)
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
 
-	// rpc.Client.
-	// req.Connection.ConnState
-	// rpc.NewClient(req.Connection)
-	// client.SetToken(unwrapToken)
+	log.Printf("Got a %T, with remaining data: %q", pub, rest)
 
-	// ta := client.Auth().Token()
-	// log.Printf("ta: %s\n", scs.Sdump(ta))
-	//
-	// time.Sleep(10)
-	// self, err := ta.LookupSelf()
-	// log.Printf("ta LookupSelf: %s, err: %s\n", scs.Sdump(self), err)
+	// populate payload with nested kv secrets
+	err = populate(ctx, req, payload)
+	if err != nil {
+		return nil, err
+	}
 
-	l := client.Logical()
-	log.Printf("logical: %s\n", scs.Sdump(l))
+	// Generate random key
+	key, err := generateRandomBytes(32)
+	if err != nil {
+		return nil, err
+	}
 
-	// Populate kv references back into payload structure
-	// (note needs to walk nested maps/arrays, see
-	// https://stackoverflow.com/questions/29366038/looping-iterate-over-the-second-level-nested-json-in-go-lang)
-	for k, v := range payload {
-		log.Println("k: " + k)
+	// Stringify payload
+	sPayload, err := json.Marshal(payload)
+	log.Printf("sPayload: %s\n", sPayload)
+
+	// see https://golang.org/pkg/crypto/cipher/#example_NewGCM_encrypt
+
+	// AES encrypt payload using key
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		panic(err.Error())
+	}
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// Generate nonce/iv
+	// Never use more than 2^32 random nonces with a given key because of the risk of a repeat.
+	nonce := make([]byte, 12)
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		panic(err.Error())
+	}
+
+	// Encrypt AESGCM and Seal
+	ciphertext := aesgcm.Seal(nil, nonce, sPayload, nil)
+	log.Printf("AES ciphertext: %x\n", ciphertext)
+
+	// encrypt the above key using RSA public key
+	// https://golang.org/pkg/crypto/rsa/#EncryptOAEP
+	// keyB64 := base64.StdEncoding.EncodeToString(key)
+	// log.Printf("keyB64: %s\n", keyB64)
+	label := []byte("My Payload...")
+	rng := rand.Reader
+	keyNonce := key
+	keyNonce = append(keyNonce, nonce...)
+
+	RSACiphertext, err := rsa.EncryptOAEP(sha256.New(), rng, pub.(*rsa.PublicKey), []byte(keyNonce), label)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error from encryption: %s\n", err)
+		panic(err.Error())
+	}
+
+	// Since encryption is a randomized function, ciphertext will be
+	// different each time.
+	log.Printf("RSA Ciphertext: %x\n", RSACiphertext)
+
+	// Wrap in Armor
+	armourLines := []string{
+		"PAYLOAD_VERSION: 2.0",
+		"-----BEGIN RSA ENCRYPTED PAYLOAD (1)-----",
+		string(base64.StdEncoding.EncodeToString(RSACiphertext)),
+		"-----END RSA ENCRYPTED PAYLOAD (1)-----",
+		"-----BEGIN AES-256 ENCRYPTED PAYLOAD (2)-----",
+	}
+
+	armourLines = append(
+		armourLines,
+		splitB64(
+			string(
+				base64.StdEncoding.EncodeToString(ciphertext)),
+			76,
+		)...,
+	)
+	armourLines = append(armourLines, "-----END AES-256 ENCRYPTED PAYLOAD (2)-----")
+
+	log.Println(strings.Join(armourLines, "\n"))
+
+	// Return the Encrypted payload
+	resp := &logical.Response{
+		Data: map[string]interface{}{
+			"key":               req.Path,
+			"enrole":            enrole,
+			"orig_payload":      payload,
+			"marshaled_payload": sPayload,
+			"payload":           strings.Join(armourLines, "\n"),
+		},
+	}
+	log.Println("return")
+	return resp, nil
+}
+
+// Populate kv references back into payload structure
+// (note needs to walk nested maps/arrays, see
+// https://stackoverflow.com/questions/29366038/looping-iterate-over-the-second-level-nested-json-in-go-lang)
+func populate(ctx context.Context, req *logical.Request, payload interface{}) error {
+	log.Println("*************** POPULATE ****************")
+	// k := map[string]interface{}{}
+	// v := map[string]interface{}{}
+	reflectPayload := reflect.ValueOf(payload)
+	p := reflectPayload
+	if reflectPayload.Type().Kind() == reflect.Struct {
+		p = reflect.ValueOf(structs.Map(payload))
+	}
+	for _, key := range p.MapKeys() {
+		log.Printf("key: %s\n", key)
+		// v := reflectPayload.MapIndex(key)
+		k := key.String()
+		v := payload.(map[string]interface{})[k]
+		log.Printf("v: %s\n", v)
+		log.Printf("v type: %s\n", reflect.TypeOf(v))
+		log.Printf("v type kind: %s\n", reflect.TypeOf(v).Kind())
+
+		tv := reflect.ValueOf(v).Kind()
+		log.Printf("tv: %s\n", tv)
+		if tv == reflect.Map || tv == reflect.Struct {
+			err := populate(ctx, req, v)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
 		if strings.Contains(k, "@/") {
 			log.Printf("%s: matches for vault path\n", k)
 			if v == true {
 				log.Printf("%s: is true\n", k)
-				parts := strings.SplitN(k, "@/", 2)
+				// parts := strings.SplitN(k, "@/", 2)
+				parts := strings.SplitN(k, "@/e2e/", 2)
 				log.Printf("%s\n", parts[0])
 				log.Printf("%s\n", parts[1])
 				fieldName := parts[0]
-				secretPath := parts[1]
+				secretPathExp := parts[1]
 
-				s, err := l.Read(secretPath)
+				secParts := strings.SplitN(secretPathExp, ".", 2)
+				log.Printf("secParts: %s\n", secParts)
+
+				// secretPath := parts[1]
+
+				// s, err := l.Read(secretPath)
+				s, err := req.Storage.Get(ctx, secParts[0])
 				if err != nil {
 					log.Println(err)
 				}
 				if s != nil {
 					log.Printf("secret: %s, err: %s\n", scs.Sdump(s), err)
-					log.Printf("secret Data: %s\n", scs.Sdump(s.Data))
+					// log.Printf("secret Data: %s\n", scs.Sdump(s.Data))
+					log.Printf("secret Data: %s\n", scs.Sdump(s.Value))
 
 					// d := s.Data["data"].(map[string]interface{})
-					d := s.Data //.(map[string]interface{})
-					log.Printf("data: %s\n", scs.Sdump(d))
-					payload[fieldName] = d["mydata"]
+					// d := s.Data //.(map[string]interface{}
+					// d := s.Value
+					vData := map[string]interface{}{}
+					if err := json.Unmarshal(s.Value, &vData); err != nil {
+						return err
+					}
+					log.Printf("data: %s\n", scs.Sdump(vData))
+
+					accessor := fmt.Sprintf(".%s", secParts[1])
+					log.Printf("accessor: %s\n", accessor)
+					//
+					// expr, err := govaluate.NewEvaluableExpression(accessor)
+					// if err != nil {
+					// 	log.Println(err)
+					// }
+					// parms := make(map[string]interface{}, 8)
+					// parms["vData"] = vData
+					// exprRes, err := expr.Evaluate(parms)
+					// if err != nil {
+					// 	log.Println(err)
+					// }
+					// log.Printf("exprRes: %s\n", exprRes)
+
+					tmpl, err := template.New("eval").Parse(fmt.Sprintf("{{%s}}", accessor))
+					if err != nil {
+						log.Println(err)
+					}
+					// log.Printf("tmpl: %s\n", tmpl)
+
+					var b bytes.Buffer
+					err = tmpl.Execute(&b, &vData)
+					if err != nil {
+						log.Println(err)
+					}
+					log.Printf("b: %s\n", b.String())
+
+					// payload[fieldName] = vData["mydata"]
+					//*payload.(*map[string]interface{}
+					payload.(map[string]interface{})[fieldName] = b.String()
 					// TODO: Support nested path expansion requests in payload
+
 				}
 			}
 		}
+	} //for
+	log.Println("-------------- POPULATE --------------")
+	return nil
+}
+
+// from https://blog.questionable.services/article/generating-secure-random-numbers-crypto-rand/
+// MIT licensed
+func generateRandomBytes(n int) ([]byte, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	// Note that err == nil only if we read len(b) bytes.
+	if err != nil {
+		return nil, err
 	}
 
-	// Generate random key/iv
+	return b, nil
+}
 
-	// Stringify and encrypt payload using key/iv and AWS256GCM
-
-	// Binary-ify key/iv and encrypt using RSA public key
-
-	// Wrap in Armor
-
-	// Return the Encrypted payload
-	resp := &logical.Response{
-		Data: map[string]interface{}{
-			"key":     req.Path,
-			"enrole":  enrole,
-			"payload": payload,
-		},
+// https://stackoverflow.com/questions/45412089/split-a-base64-line-into-chunks
+func splitB64(s string, size int) []string {
+	ss := make([]string, 0, len(s)/size+1)
+	for len(s) > 0 {
+		if len(s) < size {
+			size = len(s)
+		}
+		ss, s = append(ss, s[:size]), s[size:]
 	}
-	log.Println("return")
-	return resp, nil
+	return ss
 }
