@@ -3,12 +3,14 @@
 A proof-of-concept plugin for Hashicorp Vault to provide end-to-end encryption of
 secret interpolated JSON payloads using RSA-2048 and AES256GCM.
 
-Allows for the enrolement of a receipient's RSA public key, and use of this key
+Allows for the enrolment of a recipient’s RSA public key, and use of this key
 to encrypt JSON encoded payloads which can only be decrypted using the
 recipient's RSA private key.
 
 This plugin was written for educational purposes while learning the Go
 language (golang) and Hashicorp Vault.
+
+![Architecture](docs/plugin_arch.png)
 
 ## Secret Interpolation
 The plugin only supports kv secrets under it's own `/e2e/` mount point.
@@ -82,7 +84,7 @@ The `payload` can then be sent to the recipient to be decrypted with their
 RSA private key.
 
 ## Testing
-Run ./docker.sh to build the test docker conatiner and run the tests.
+Run ./docker.sh to build the test docker container and run the tests.
 See contents of the `test/` folder for the tests and example curl commands.
 
 ## Decrypting
@@ -128,7 +130,7 @@ to generate PEM key pair to stdout
 go run bin/genrsapair.go &&  jq -Rsc . < test/test_key_rsa_pub.pem >test/test_key_rsa_pub_string.pem
 ```
 to encode as json string array, that can be pasted into a curl command for
-enrolement.
+enrolment.
 ```
 curl -s -H "Accept: application/json" \
   -H "Content-type: application/json" \
