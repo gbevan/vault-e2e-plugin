@@ -29,8 +29,6 @@ func Backend(ctx context.Context, conf *logical.BackendConfig) *E2eBackend {
 		view: conf.StorageView,
 	}
 
-	log.Println("**** E2E in Backend ****")
-
 	backend.Backend = &framework.Backend{
 		Help:        "E2E Plugin",
 		BackendType: logical.TypeLogical,

@@ -1,0 +1,19 @@
+{
+  "payload": {
+    "level1": {
+      "level2": {
+        "level3": {
+          "level4": {
+            "level5": {
+              "field1@/e2e/kv/Customer1/Actor1/secret-form.secret1": true,
+              "field2@/e2e/kv/Customer1/Actor1/secret-form.secret2": true
+            }
+          }
+        }
+      },
+      "fromdeep@/e2e/kv/Customer1/Actor1/secret-form.nested.level2.deepsecret": true,
+      "missing_novar@/e2e/kv/Customer1/Actor1/secret-form.willnotbefound": true,
+      "missing_nopath@/e2e/kv/Customer1/Actor1/nopath.willnotbefound": true
+    }
+  }
+}

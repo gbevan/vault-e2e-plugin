@@ -13,7 +13,7 @@ vault login root
 # install the jwt plugin
 vault write sys/plugins/catalog/e2e-plugin sha_256=$(cat /vault/plugins/e2e-plugin.sha) command=e2e-plugin
 
-vault secrets enable --plugin-name=e2e-plugin --description="E2E Encryption" --path="e2e" plugin
+vault secrets enable --plugin-name=e2e-plugin --description="e2e encryption" --path="e2e" plugin
 
 echo "******************************************************************"
 VURL="http://127.0.0.1:${VAULT_PORT}/v1"
@@ -29,8 +29,16 @@ curl -s -H "Accept: application/json" -H "Content-type: application/json" --head
 # curl -s -H "Accept: application/json" -H "Content-type: application/json" --header "X-Vault-Token: root"  $VURL/secret/data/my-secret -X POST --data '{"data": {"mydata": "This is a secret!"}}'
 curl -s -H "Accept: application/json" -H "Content-type: application/json" --header "X-Vault-Token: root"  $VURL/e2e/kv/my-secret -X POST --data '{"data": {"mydata": "This is a secret!"}}'
 curl -s -H "Accept: application/json" -H "Content-type: application/json" --header "X-Vault-Token: root"  $VURL/e2e/kv/my-secret2 -X POST --data '{"data": {"mydata2": "This is another secret!"}}'
+curl -s -H "Accept: application/json" -H "Content-type: application/json" --header "X-Vault-Token: root"  $VURL/e2e/kv/my-secret3 -X POST --data '{"data": {"mydata3": "THIS IS A REALLY SECRET SECRET!!! ARRAYS NEED MORE THOUGHT IN populate()..."}}'
+curl -s -H "Accept: application/json" -H "Content-type: application/json" --header "X-Vault-Token: root"  $VURL/e2e/kv/Customer1/Actor1/secret-form -X POST --data @test/secrets.json
 
 # Get payload referencing above secret path
-curl -s -H "Accept: application/json" -H "Content-type: application/json" --header "X-Vault-Token: root"  $VURL/e2e/payload/TEST -X POST  --data '{"payload": {"hello": "world", "secretData@/e2e/kv/my-secret.mydata": true, "nested": {"anotherSecret@/e2e/kv/my-secret2.mydata2": true}}}' | jq .data.payload -r
+curl -s -H "Accept: application/json" -H "Content-type: application/json" --header "X-Vault-Token: root"  $VURL/e2e/payload/TEST -X POST  --data '{"payload": {"hello": "world", "secretData@/e2e/kv/my-secret.mydata": true, "nested": {"anotherSecret@/e2e/kv/my-secret2.mydata2": true, "nested_level3": {"OMG_REALLY_SECRET@/e2e/kv/my-secret3.mydata3": true}, "array": [{"OMG_REALLY_SECRET_SERIOUSLY@/e2e/kv/my-secret3.mydata3": true}]}}}' | jq .data.payload -r
+
+ls -la
+rm -f test/payload_result.json test/payload.txt || /bin/true
+curl -s -H "Accept: application/json" -H "Content-type: application/json" --header "X-Vault-Token: root"  $VURL/e2e/payload/TEST -X POST  --data @test/form1.json | tee test/payload_result.json | jq .data.payload -r > test/payload.txt
+cat test/payload_result.json | jq .
+cat test/payload.txt
 
 vault secrets list

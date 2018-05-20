@@ -49,8 +49,8 @@ EXPOSE ${VAULT_PORT}
 WORKDIR /vault/plugins
 COPY --from=builder /go/src/gitlab.com/gbevan/vault-e2e-plugin/build /vault/plugins
 
-ADD ./test ./test
-RUN chmod a+x ./test/*.sh
+#ADD ./test ./test
+#RUN chmod a+x ./test/*.sh
 
 ENTRYPOINT [ "./test/start_vault.sh" ]
 

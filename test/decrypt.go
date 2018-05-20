@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/pem"
 	"flag"
 	"fmt"
@@ -37,30 +38,28 @@ func main() {
 
 	// read payload from stdin
 	scanner := bufio.NewScanner(os.Stdin)
-	stage := "payloadversion"
+	stage := "looking"
 
 	// break out sections
-	rsaPayloadB64 := ""
-	aesPayloadB64 := ""
+	payloadB64 := ""
 	// payloadVersion := ""
 	for scanner.Scan() {
 		line := scanner.Text()
 		switch stage {
-		case "payloadversion":
-			// fmt.Printf("> %s\n", line)
-			// parts := strings.SplitN(line, ": ", 2)
-			// payloadVersion = parts[1]
-			stage = "rsa"
+		case "looking":
+			if strings.HasPrefix(line, "-----BEGIN E2E ENCRYPTED PAYLOAD-----") {
+				stage = "started"
+			}
+		case "started":
+			// can catch headers here, until empty line
+
+			if line == "" {
+				stage = "rsa"
+			}
 		case "rsa":
 			if !strings.HasPrefix(line, "-----") {
-				rsaPayloadB64 += strings.Trim(line, "")
-			} else if strings.HasPrefix(line, "-----END") {
-				stage = "aes"
-			}
-		case "aes":
-			if !strings.HasPrefix(line, "-----") {
-				aesPayloadB64 += strings.Trim(line, "")
-			} else if strings.HasPrefix(line, "-----END") {
+				payloadB64 += strings.Trim(line, "")
+			} else if strings.HasPrefix(line, "-----END E2E ENCRYPTED PAYLOAD-----") {
 				break
 			}
 		default:
@@ -71,19 +70,20 @@ func main() {
 	// fmt.Printf("rsaPayloadB64: %s\n", rsaPayloadB64)
 	// fmt.Printf("aesPayloadB64: %s\n", aesPayloadB64)
 
-	rsaPayload, err := base64.StdEncoding.DecodeString(rsaPayloadB64)
+	payload, err := base64.StdEncoding.DecodeString(payloadB64)
 	if err != nil {
 		panic(err)
 	}
-	aesPayload, err := base64.StdEncoding.DecodeString(aesPayloadB64)
-	if err != nil {
-		panic(err)
-	}
-	// fmt.Printf("rsaPayload: %x\n", rsaPayload)
+
+	rsaLen := binary.LittleEndian.Uint16(payload[:2])
+	rsaPayload := payload[2 : 2+rsaLen]
+	aesPayload := payload[2+rsaLen:]
+
+	// fmt.Printf("rsaPayload: %x, len: %d\n", rsaPayload, len(rsaPayload))
 	// fmt.Printf("aesPayload: %x\n", aesPayload)
 
 	// decrypt RSA part (1)
-	label := []byte("My Payload...")
+	label := []byte("Vault E2E Payload")
 	rng := rand.Reader
 	rsaPlaintext, err := rsa.DecryptOAEP(sha256.New(), rng, key, rsaPayload, label)
 	if err != nil {

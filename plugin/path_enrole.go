@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/hashicorp/errwrap"
@@ -43,7 +42,6 @@ E2E Enrolement Help goes here...
 `
 
 func pathEnrole(backend *E2eBackend) []*framework.Path {
-	log.Println("**** in pathEnrole ***")
 	paths := []*framework.Path{
 		&framework.Path{
 			Pattern:         fmt.Sprintf("enrole/"),
@@ -73,7 +71,6 @@ func pathEnrole(backend *E2eBackend) []*framework.Path {
 }
 
 func (backend *E2eBackend) pathExistenceCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
-	log.Println("**** in pathExistenceCheck *** Path:" + req.Path)
 	out, err := req.Storage.Get(ctx, req.Path)
 	if err != nil {
 		return false, errwrap.Wrapf("existence check failed: {{err}}", err)
@@ -83,15 +80,11 @@ func (backend *E2eBackend) pathExistenceCheck(ctx context.Context, req *logical.
 }
 
 func (backend *E2eBackend) pathEnroleDeny(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	log.Println("**** in pathEnroleDeny ***")
-
 	response := logical.ErrorResponse("Denied - add only supported, updates/deletes require manual intervention for enrolement")
 	return response, nil
 }
 
 func (backend *E2eBackend) pathEnroleCreate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	log.Println("**** in pathEnroleCreate *** req:" + req.GoString())
-
 	timeText, err := time.Now().MarshalText()
 	if err != nil {
 		return nil, err
@@ -121,9 +114,6 @@ func (backend *E2eBackend) pathEnroleCreate(ctx context.Context, req *logical.Re
 		return nil, err
 	}
 
-	body := fmt.Sprintf("{\"Name\": \"%s\"}", enroleEntry.Name)
-	log.Println("body: " + body)
-
 	response := &logical.Response{
 		Data: map[string]interface{}{
 			"Name": enroleEntry.Name,
@@ -134,8 +124,6 @@ func (backend *E2eBackend) pathEnroleCreate(ctx context.Context, req *logical.Re
 }
 
 func (backend *E2eBackend) pathEnroleRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	log.Println("**** in pathEnroleRead ***")
-
 	entry, err := req.Storage.Get(ctx, req.Path)
 	if err != nil {
 		return nil, err
@@ -146,8 +134,6 @@ func (backend *E2eBackend) pathEnroleRead(ctx context.Context, req *logical.Requ
 	}
 
 	jsonValue := entry.Value
-
-	backend.Logger().Info("reading value", "key", req.Path, "json", string(jsonValue))
 
 	// unmarshal the json encoded data
 	var enrole E2eEnrolementEntry
@@ -167,8 +153,6 @@ func (backend *E2eBackend) pathEnroleRead(ctx context.Context, req *logical.Requ
 }
 
 func (backend *E2eBackend) pathEnroleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	log.Println("**** in pathEnroleList ***")
-
 	entries, err := req.Storage.List(ctx, req.Path)
 	if err != nil {
 		return nil, err
