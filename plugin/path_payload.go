@@ -191,10 +191,6 @@ func (backend *E2eBackend) pathPayloadCreate(ctx context.Context, req *logical.R
 	// Return the Encrypted payload
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			// "key":               req.Path,
-			// "enrole":            enrole,
-			// "orig_payload":      payload,
-			// "marshaled_payload": sPayload,
 			"payload":    strings.Join(armourLines, "\n"),
 			"errorcount": errorCount,
 			"errors":     errors,

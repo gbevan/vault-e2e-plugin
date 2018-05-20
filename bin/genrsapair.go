@@ -31,7 +31,6 @@ func main() {
 		panic(err)
 	}
 
-	// log.Println("**** Generating RSA key pair ****")
 	reader := rand.Reader
 	bitSize := 2048
 
@@ -45,7 +44,7 @@ func main() {
 
 	publicKey := &key.PublicKey
 
-	// print PEM encoded private key
+	// write PEM encoded private key
 	privateKey := &pem.Block{
 		Type:  "PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(key),
@@ -57,7 +56,7 @@ func main() {
 
 	fmt.Println()
 
-	// print PEM encoded public key
+	// write PEM encoded public key
 	// asn1Bytes, err := asn1.Marshal(publicKey)
 	pkixBytes, err := x509.MarshalPKIXPublicKey(publicKey)
 	checkError(err)
