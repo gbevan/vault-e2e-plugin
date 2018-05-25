@@ -85,13 +85,13 @@ RSA private key.
 
 ## Testing
 Run ./docker.sh to build the test docker container and run the tests.
-See contents of the `test/` folder for the tests and example curl commands.
+See contents of the `test/bats` folder for the tests and example curl commands.
 
 ## Decrypting
-A go program to decrypt the payload is available called `test/decrypt.go`.
+A go program to decrypt the payload is available called `decrypt/decrypt.go`.
 To run:
 ```
-vault-e2e-plugin/test$ go run decrypt.go -privkey test_key_rsa.pem <payload.txt |jq
+vault-e2e-plugin/test$ go run ../decrypt/decrypt.go -privkey test_key_rsa.pem <payload.txt |jq
 {
   "level1": {
     "fromdeep": "this is a deep secret",
@@ -123,11 +123,11 @@ vault secrets enable -path=e2e -plugin-name=e2e plugin
 ## Generate a RSA Key Pair (for testing)
 
 ```
-go run bin/genrsapair.go [-prefix test/test_key]
+go run genrsapair/genrsapair.go [-prefix test/test_key]
 ```
 to generate PEM key pair to stdout
 ```
-go run bin/genrsapair.go &&  jq -Rsc . < test/test_key_rsa_pub.pem >test/test_key_rsa_pub_string.pem
+go run genrsapair/genrsapair.go &&  jq -Rsc . < test/test_key_rsa_pub.pem >test/test_key_rsa_pub_string.pem
 ```
 to encode as json string array, that can be pasted into a curl command for
 enrolment.
@@ -138,7 +138,7 @@ curl -s -H "Accept: application/json" \
   --request POST http://127.0.0.1:8210/v1/e2e/enrole/TEST \
   --data '{"name": "TEST", "pubkey":"-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwbz8uJeyqUMfZe+dHYcq\nAtQOtCjCzztLgPLNH/i+oQvlfiWZfmBtbYeEHVEPyd0O1hLM7cS3nUbY9JgHQQyC\nYnVvGcz9/BrPzCksVqr6lyFM2/6hjkUqJv47xwVaaW464hwRB0dEDCxwJUtM4gIa\nD4gwAfiHlU5BGRyDq0Cl0pwniN4othA12PZsFgM4F96MfpsLO5jNFmVcfjyFAq6k\nEdYPjfHRgZmdkbOhlDLyx6FknE8L68QcANcQw3olGizgIW2MTdwCOuWk3oeohBvz\nA0uYO6GdRxL1IIzOcy+IJqmhjbua6utwgOiiNQs7cxil4CEsmveYZ0Q8n18B+rIJ\niQIDAQAB\n-----END PUBLIC KEY-----\n"}'
 ```
-Check the enrolement entry in Vault E2E:
+Check the enrolment entry in Vault E2E:
 ```
 curl -s -H "Accept: application/json" \
   -H "Content-type: application/json" \
