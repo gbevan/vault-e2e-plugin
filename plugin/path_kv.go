@@ -88,7 +88,7 @@ func (backend *E2eBackend) pathKVRead(ctx context.Context, req *logical.Request,
 		return nil, err
 	}
 	if entry == nil {
-		return nil, errors.New("could not find version data")
+		return nil, errors.New("could not find e2e path")
 	}
 
 	vData := map[string]interface{}{}
