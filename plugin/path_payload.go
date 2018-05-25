@@ -126,6 +126,9 @@ func (backend *E2eBackend) pathPayloadCreate(ctx context.Context, req *logical.R
 
 	// Stringify payload
 	sPayload, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
 
 	// see https://golang.org/pkg/crypto/cipher/#example_NewGCM_encrypt
 	// AES encrypt payload using key
