@@ -41,7 +41,7 @@ RUN ls -la build/
 ###############################################################################
 # Vault layer
 ## build the docker container with vault and the plugin mounted
-FROM vault:latest
+FROM vault:0.10.2 # match version in gopkg.toml
 
 ENV VAULT_PORT 8200
 ENV VAULT_TOKEN ""
